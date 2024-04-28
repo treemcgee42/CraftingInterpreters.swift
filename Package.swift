@@ -15,6 +15,10 @@ let package = Package(
           name: "lox",
           targets: ["Lox"]
         ),
+        .executable(
+          name: "generate_ast",
+          targets: ["Tool"]
+        ),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
@@ -28,6 +32,11 @@ let package = Package(
           name: "Lox",
           dependencies: [],
           path: "Sources/Lox"
+        ),
+        .executableTarget(
+          name: "Tool",
+          dependencies: [],
+          path: "Sources/Tool"
         ),
     ]
 )

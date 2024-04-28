@@ -51,10 +51,14 @@ struct Lox {
     private static func run(source: String) {
         let scanner = Scanner(source: source)
         let tokens = scanner.scanTokens()
+        let parser = Parser(tokens: tokens)
+        let expression = parser.parse()
 
-        for token in tokens {
-            print(token)
+        if hadError {
+            return
         }
+
+        print(AstPrinter().printExpr(expr: expression!))
     }
 
     static func error(line: Int, message: String) {
@@ -64,5 +68,13 @@ struct Lox {
     private static func report(line: Int, loc: String, msg: String) {
         print("[line \(line)] Error\(loc): \(msg)")
         self.hadError = true
+    }
+
+    static func error(token: Token, msg: String) {
+        if token.type == .eof {
+            report(line: token.line, loc: " at end", msg: msg)
+        } else {
+            report(line: token.line, loc: " at '\(token.lexeme)'", msg: msg)
+        }
     }
 }
