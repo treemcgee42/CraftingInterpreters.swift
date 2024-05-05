@@ -2,50 +2,69 @@
 // This is a generated file.
 
 protocol Expr {
-    func accept<V: Visitor>(_ visitor: V) throws -> V.R
+    func accept<V: ExprVisitor>(_ visitor: V) throws -> V.ExprR
 }
 
-protocol Visitor {
-	associatedtype R
+protocol ExprVisitor {
+	associatedtype ExprR
 
-	func visitBinaryExpr(_ Expr: Binary) throws -> R
-	func visitGroupingExpr(_ Expr: Grouping) throws -> R
-	func visitLiteralExpr(_ Expr: Literal) throws -> R
-	func visitUnaryExpr(_ Expr: Unary) throws -> R
+	func visitUnaryExpr(_ Expr: UnaryExpr) throws -> ExprR
+	func visitLiteralExpr(_ Expr: LiteralExpr) throws -> ExprR
+	func visitGroupingExpr(_ Expr: GroupingExpr) throws -> ExprR
+	func visitBinaryExpr(_ Expr: BinaryExpr) throws -> ExprR
+	func visitAssignExpr(_ Expr: AssignExpr) throws -> ExprR
+	func visitVariableExpr(_ Expr: VariableExpr) throws -> ExprR
 }
 
-struct Binary: Expr {
-	var left: Expr
+struct UnaryExpr: Expr {
 	var op: Token
 	var right: Expr
 
-	func accept<V: Visitor>(_ visitor: V) throws -> V.R {
-		return try visitor.visitBinaryExpr(self)
+	func accept<V: ExprVisitor>(_ visitor: V) throws -> V.ExprR {
+		return try visitor.visitUnaryExpr(self)
 	}
 }
 
-struct Grouping: Expr {
-	var expression: Expr
-
-	func accept<V: Visitor>(_ visitor: V) throws -> V.R {
-		return try visitor.visitGroupingExpr(self)
-	}
-}
-
-struct Literal: Expr {
+struct LiteralExpr: Expr {
 	var value: Optional<Any>
 
-	func accept<V: Visitor>(_ visitor: V) throws -> V.R {
+	func accept<V: ExprVisitor>(_ visitor: V) throws -> V.ExprR {
 		return try visitor.visitLiteralExpr(self)
 	}
 }
 
-struct Unary: Expr {
+struct GroupingExpr: Expr {
+	var expression: Expr
+
+	func accept<V: ExprVisitor>(_ visitor: V) throws -> V.ExprR {
+		return try visitor.visitGroupingExpr(self)
+	}
+}
+
+struct BinaryExpr: Expr {
+	var left: Expr
 	var op: Token
 	var right: Expr
 
-	func accept<V: Visitor>(_ visitor: V) throws -> V.R {
-		return try visitor.visitUnaryExpr(self)
+	func accept<V: ExprVisitor>(_ visitor: V) throws -> V.ExprR {
+		return try visitor.visitBinaryExpr(self)
+	}
+}
+
+struct AssignExpr: Expr {
+	var name: Token
+	var value: Expr
+
+	func accept<V: ExprVisitor>(_ visitor: V) throws -> V.ExprR {
+		return try visitor.visitAssignExpr(self)
+	}
+}
+
+struct VariableExpr: Expr {
+	var name: Token
+
+	func accept<V: ExprVisitor>(_ visitor: V) throws -> V.ExprR {
+		return try visitor.visitVariableExpr(self)
 	}
 }
 

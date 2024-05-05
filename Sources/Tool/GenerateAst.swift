@@ -15,10 +15,20 @@ class GenerateAst {
         try defineAst(
           outputDir: outputDir,
           baseName: "Expr",
-          types: ["Binary": [("left", "Expr"), ("op", "Token"), ("right", "Expr")],
+          types: ["Assign": [("name", "Token"), ("value", "Expr")],
+                  "Binary": [("left", "Expr"), ("op", "Token"), ("right", "Expr")],
                   "Grouping": [("expression", "Expr")],
                   "Literal": [("value", "Optional<Any>")],
-                  "Unary": [("op", "Token"), ("right", "Expr")]])
+                  "Unary": [("op", "Token"), ("right", "Expr")],
+                  "Variable": [("name", "Token")]])
+
+        try defineAst(
+          outputDir: outputDir,
+          baseName: "Stmt",
+          types: ["Block": [("statements", "[Stmt?]")],
+                  "Expression": [("expression", "Expr")],
+                  "Print": [("expression", "Expr")],
+                  "Var": [("name", "Token"), ("initializer", "Expr?")]])
     }
 
     private static func defineAst(outputDir: String, baseName: String,
@@ -31,7 +41,7 @@ class GenerateAst {
           // This is a generated file.
 
           protocol \(baseName) {
-              func accept<V: Visitor>(_ visitor: V) throws -> V.R
+              func accept<V: \(baseName)Visitor>(_ visitor: V) throws -> V.\(baseName)R
           }
           
           """
@@ -47,12 +57,12 @@ class GenerateAst {
     }
 
     private static func defineVisitor(content: inout String, baseName: String, types: [String]) {
-        content += "\nprotocol Visitor {"
+        content += "\nprotocol \(baseName)Visitor {"
 
-        content += "\n\tassociatedtype R\n"
+        content += "\n\tassociatedtype \(baseName)R\n"
 
         for type in types {
-            content += "\n\tfunc visit\(type)\(baseName)(_ \(baseName): \(type)) throws -> R"
+            content += "\n\tfunc visit\(type)\(baseName)(_ \(baseName): \(type)\(baseName)) throws -> \(baseName)R"
         }
 
         content += "\n}\n\n"
@@ -60,7 +70,7 @@ class GenerateAst {
 
     private static func defineType(content: inout String, baseName: String, className: String,
                                    fieldList: [(String, String)]) {
-        content += "struct \(className): \(baseName) {"
+        content += "struct \(className)\(baseName): \(baseName) {"
 
         for (fieldName, fieldType) in fieldList {
             content += "\n\tvar \(fieldName): \(fieldType)"
@@ -68,7 +78,7 @@ class GenerateAst {
 
         // Visitor pattern.
         content += "\n"
-        content += "\n\tfunc accept<V: Visitor>(_ visitor: V) throws -> V.R {"
+        content += "\n\tfunc accept<V: \(baseName)Visitor>(_ visitor: V) throws -> V.\(baseName)R {"
         content += "\n\t\treturn try visitor.visit\(className)\(baseName)(self)"
         content += "\n\t}"
 

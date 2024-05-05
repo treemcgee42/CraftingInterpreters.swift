@@ -57,14 +57,14 @@ struct Lox {
         let scanner = Scanner(source: source)
         let tokens = scanner.scanTokens()
         let parser = Parser(tokens: tokens)
-        let expression = parser.parse()!
+        let statements = parser.parse()
 
         if hadError {
             return
         }
 
         // print(try! AstPrinter().printExpr(expr: expression!))
-        interpreter.interpret(expr: expression)
+        interpreter.interpret(statements: statements)
     }
 
     static func error(line: Int, message: String) {

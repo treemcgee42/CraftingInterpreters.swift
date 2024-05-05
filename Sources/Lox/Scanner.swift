@@ -67,7 +67,7 @@ class Scanner {
         case "!":
             addToken(match("=") ? .bangEqual : .bang)
         case "=":
-            addToken(match("=") ? .lessEqual : .less)
+            addToken(match("=") ? .equalEqual : .equal)
         case "<":
             addToken(match("=") ? .lessEqual : .less)
         case ">":

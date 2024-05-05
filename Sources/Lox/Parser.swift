@@ -9,16 +9,97 @@ class Parser {
         self.tokens = tokens
     }
 
-    func parse() -> Optional<Expr> {
+    func parse() -> [Stmt?] {
         do {
-            return try expression()
+            var statements: [Stmt?] = []
+            while (!isAtEnd()) {
+                statements.append(try declaration())
+            }
+            return statements;
         } catch {
-            return nil
+            // TODO
+            return []
         }
     }
 
     private func expression() throws -> Expr {
-        return try equality()
+        return try assignment()
+    }
+
+    private func declaration() throws -> Stmt? {
+        do {
+            if match([.var_]) {
+                return try varDeclaration()
+            }
+            return try statement()
+        } catch is ParseError {
+            synchronize()
+            return nil
+        }
+    }
+
+    private func statement() throws -> Stmt {
+        if match([.print]) {
+            return try printStatement()
+        }
+        if match([.leftBrace]) {
+            return BlockStmt(statements: try block())
+        }
+
+        return try expressionStatement()
+    }
+
+    private func printStatement() throws -> Stmt {
+        let value = try expression()
+        _ = try consume(type: .semicolon, msg: "Expect ';' after value.")
+        return PrintStmt(expression: value)
+    }
+
+    private func varDeclaration() throws -> Stmt {
+        let name = try consume(type: .identifier, msg: "Expect variable name.")
+
+        var initializer: Expr? = nil
+        if match([.equal]) {
+            initializer = try expression()
+        }
+
+        _ = try consume(type: .semicolon, msg: "Expect ';' after variable declaration.")
+        return VarStmt(name: name, initializer: initializer)
+    }
+
+    private func expressionStatement() throws -> Stmt {
+        let expr = try expression()
+        _ = try consume(type: .semicolon, msg: "Expect ';' after expression.")
+        return ExpressionStmt(expression: expr)
+    }
+
+    private func block() throws -> [Stmt?] {
+        var statements: [Stmt?] = []
+
+        while (!check(.rightBrace)) && (!isAtEnd()) {
+            statements.append(try declaration())
+        }
+
+        _ = try consume(type: .rightBrace, msg: "Expect '}' after block.")
+        return statements
+    }
+
+    private func assignment() throws -> Expr {
+        let expr = try equality()
+
+        if match([.equal]) {
+            let equals = previous()
+            let value = try assignment()
+
+            if expr is VariableExpr {
+                let name = (expr as! VariableExpr).name
+                return AssignExpr(name: name, value: value)
+            }
+
+            _ = error(token: equals, msg: "Invalid assignment target")
+        }
+
+        return expr
     }
 
     private func equality() throws -> Expr {
@@ -27,7 +108,7 @@ class Parser {
         while match([.bangEqual, .equalEqual]) {
             let op = previous()
             let right = try comparision()
-            expr = Binary(left: expr, op: op, right: right)
+            expr = BinaryExpr(left: expr, op: op, right: right)
         }
 
         return expr
@@ -39,7 +120,7 @@ class Parser {
         while match([.greater, .greaterEqual, .less, .lessEqual]) {
             let op = previous()
             let right = try term()
-            expr = Binary(left: expr, op: op, right: right)
+            expr = BinaryExpr(left: expr, op: op, right: right)
         }
 
         return expr
@@ -51,7 +132,7 @@ class Parser {
         while match([.minus, .plus]) {
             let op = previous()
             let right = try factor()
-            expr = Binary(left: expr, op: op, right: right)
+            expr = BinaryExpr(left: expr, op: op, right: right)
         }
 
         return expr
@@ -63,7 +144,7 @@ class Parser {
         while match([.slash, .star]) {
             let op = previous()
             let right = try unary()
-            expr = Binary(left: expr, op: op, right: right)
+            expr = BinaryExpr(left: expr, op: op, right: right)
         }
 
         return expr
@@ -73,7 +154,7 @@ class Parser {
         if match([.bang, .minus]) {
             let op = previous()
             let right = try unary()
-            return Unary(op: op, right: right)
+            return UnaryExpr(op: op, right: right)
         }
 
         return try primary()
@@ -81,23 +162,27 @@ class Parser {
 
     private func primary() throws -> Expr {
         if match([.false_]) {
-            return Literal(value: false)
+            return LiteralExpr(value: false)
         }
         if match([.true_]) {
-            return Literal(value: true)
+            return LiteralExpr(value: true)
         }
         if match([.nil_]) {
-            return Literal(value: nil)
+            return LiteralExpr(value: nil)
         }
 
         if match([.number, .string]) {
-            return Literal(value: previous().literal)
+            return LiteralExpr(value: previous().literal)
+        }
+
+        if match([.identifier]) {
+            return VariableExpr(name: previous())
         }
 
         if match([.leftParen]) {
             let expr = try expression()
             _ = try consume(type: .rightParen, msg: "Expect ')' after expression.")
-            return Grouping(expression: expr)
+            return GroupingExpr(expression: expr)
         }
 
         throw error(token: peek(), msg: "Expect expression.")

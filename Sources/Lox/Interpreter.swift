@@ -1,11 +1,15 @@
 
-class Interpreter: Visitor {
-    typealias R = Optional<Any>
+class Interpreter: ExprVisitor, StmtVisitor {
+    typealias ExprR = Optional<Any>
+    typealias StmtR = ()?
 
-    func interpret(expr: Expr) {
+    private var environment = Environment()
+    
+    func interpret(statements: [Stmt?]) {
         do {
-            let value = try evaluate(expr)
-            print(stringify(value))
+            for statement in statements {
+                try execute(stmt: statement)
+            }
         } catch let re as RuntimeError {
             Lox.runtimeError(re)
         } catch {
@@ -13,11 +17,11 @@ class Interpreter: Visitor {
         }
     }
     
-    func visitLiteralExpr(_ expr: Literal) -> Optional<Any> {
+    func visitLiteralExpr(_ expr: LiteralExpr) -> Optional<Any> {
         return expr.value
     }
 
-    func visitUnaryExpr(_ expr: Unary) throws -> Optional<Any> {
+    func visitUnaryExpr(_ expr: UnaryExpr) throws -> Optional<Any> {
         let right = try evaluate(expr.right)
 
         switch expr.op.type {
@@ -31,6 +35,10 @@ class Interpreter: Visitor {
         }
 
         return nil
+    }
+
+    func visitVariableExpr(_ expr: VariableExpr) throws -> Optional<Any> {
+        return try environment.get(name: expr.name)
     }
 
     private func checkNumberOperand(op: Token, operand: Optional<Any>) throws {
@@ -99,7 +107,7 @@ class Interpreter: Visitor {
         return String(describing: obj!)
     }
 
-    func visitGroupingExpr(_ expr: Grouping) throws -> Optional<Any> {
+    func visitGroupingExpr(_ expr: GroupingExpr) throws -> Optional<Any> {
         return try evaluate(expr.expression)
     }
 
@@ -107,7 +115,31 @@ class Interpreter: Visitor {
         return try expr.accept(self)
     }
 
-    func visitBinaryExpr(_ expr: Binary) throws -> Optional<Any> {
+    private func execute(stmt: Stmt?) throws {
+        if let nonnil_stmt = stmt {
+            _ = try nonnil_stmt.accept(self)
+        }
+    }
+
+    func executeBlock(statements: [Stmt?], environment: Environment) throws {
+        let previous = self.environment
+        defer {
+            self.environment = previous
+        }
+        
+        self.environment = environment
+        for statement in statements {
+            try execute(stmt: statement)
+        }
+    }
+
+    func visitBlockStmt(_ stmt: BlockStmt) throws -> ()? {
+        try executeBlock(statements: stmt.statements,
+                         environment: Environment(enclosing: self.environment))
+        return nil
+    }
+
+    func visitBinaryExpr(_ expr: BinaryExpr) throws -> Optional<Any> {
         let left = try evaluate(expr.left)
         let right = try evaluate(expr.right)
 
@@ -152,5 +184,32 @@ class Interpreter: Visitor {
 
         // Unreachable.
         return nil;
+    }
+
+    func visitExpressionStmt(_ stmt: ExpressionStmt) throws -> ()? {
+        _ = try evaluate(stmt.expression);
+        return nil
+    }
+
+    func visitPrintStmt(_ stmt: PrintStmt) throws -> ()? {
+        let value = try evaluate(stmt.expression)
+        print(stringify(value))
+        return nil
+    }
+
+    func visitVarStmt(_ stmt: VarStmt) throws -> ()? {
+        var value: Optional<Any> = nil
+        if let initializer_expr = stmt.initializer {
+            value = try evaluate(initializer_expr)
+        }
+
+        environment.define(name: String(stmt.name.lexeme), value: value)
+        return nil
+    }
+
+    func visitAssignExpr(_ expr: AssignExpr) throws -> Optional<Any> {
+        let value = try evaluate(expr.value)
+        try environment.assign(name: expr.name, value: value)
+        return value
     }
 }
