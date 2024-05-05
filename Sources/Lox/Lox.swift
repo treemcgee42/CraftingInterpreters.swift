@@ -3,7 +3,9 @@ import Foundation
 
 @main
 struct Lox {
+    static var interpreter: Interpreter = Interpreter()
     static var hadError: Bool = false
+    static var hadRuntimeError: Bool = false
     
     static func main() {
         let args = CommandLine.arguments
@@ -33,6 +35,9 @@ struct Lox {
         if hadError {
             exit(65)
         }
+        if hadRuntimeError {
+            exit(70)
+        }
     }
 
     private static func runPrompt() throws {
@@ -52,17 +57,23 @@ struct Lox {
         let scanner = Scanner(source: source)
         let tokens = scanner.scanTokens()
         let parser = Parser(tokens: tokens)
-        let expression = parser.parse()
+        let expression = parser.parse()!
 
         if hadError {
             return
         }
 
-        print(AstPrinter().printExpr(expr: expression!))
+        // print(try! AstPrinter().printExpr(expr: expression!))
+        interpreter.interpret(expr: expression)
     }
 
     static func error(line: Int, message: String) {
         report(line: line, loc: "", msg: message)
+    }
+
+    static func runtimeError(_ error: RuntimeError) {
+        print("\(error.msg)\n[line \(error.token.line)]")
+        hadRuntimeError = true
     }
 
     private static func report(line: Int, loc: String, msg: String) {

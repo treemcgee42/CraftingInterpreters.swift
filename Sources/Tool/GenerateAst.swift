@@ -31,7 +31,7 @@ class GenerateAst {
           // This is a generated file.
 
           protocol \(baseName) {
-              func accept<V: Visitor>(_ visitor: V) -> V.R
+              func accept<V: Visitor>(_ visitor: V) throws -> V.R
           }
           
           """
@@ -52,7 +52,7 @@ class GenerateAst {
         content += "\n\tassociatedtype R\n"
 
         for type in types {
-            content += "\n\tfunc visit\(type)\(baseName)(_ \(baseName): \(type)) -> R"
+            content += "\n\tfunc visit\(type)\(baseName)(_ \(baseName): \(type)) throws -> R"
         }
 
         content += "\n}\n\n"
@@ -68,8 +68,9 @@ class GenerateAst {
 
         // Visitor pattern.
         content += "\n"
-        content += "\n\tfunc accept<V: Visitor>(_ visitor: V) -> V.R {"
-        content += " return visitor.visit\(className)\(baseName)(self) }"
+        content += "\n\tfunc accept<V: Visitor>(_ visitor: V) throws -> V.R {"
+        content += "\n\t\treturn try visitor.visit\(className)\(baseName)(self)"
+        content += "\n\t}"
 
         content += "\n}\n\n"
     }

@@ -2,16 +2,17 @@
 class AstPrinter: Visitor {
     typealias R = String
     
-    func printExpr(expr: Expr) -> String {
-        return expr.accept(self)
+    func printExpr(expr: Expr) throws -> String {
+        return try expr.accept(self)
     }
 
-    func visitBinaryExpr(_ expr: Binary) -> String {
-        return parenthesize(name: String(expr.op.lexeme), exprs: [expr.left, expr.right])
+    func visitBinaryExpr(_ expr: Binary) throws -> String {
+        return try parenthesize(name: String(expr.op.lexeme),
+                                exprs: [expr.left, expr.right])
     }
 
-    func visitGroupingExpr(_ expr: Grouping) -> String {
-        return parenthesize(name: "group", exprs: [expr.expression])
+    func visitGroupingExpr(_ expr: Grouping) throws -> String {
+        return try parenthesize(name: "group", exprs: [expr.expression])
     }
 
     func visitLiteralExpr(_ expr: Literal) -> String {
@@ -21,14 +22,15 @@ class AstPrinter: Visitor {
         return String(describing: expr.value)
     }
 
-    func visitUnaryExpr(_ expr: Unary) -> String {
-        return parenthesize(name: String(expr.op.lexeme), exprs: [expr.right])
+    func visitUnaryExpr(_ expr: Unary) throws -> String {
+        return try parenthesize(name: String(expr.op.lexeme),
+                                exprs: [expr.right])
     }
 
-    private func parenthesize(name: String, exprs: [Expr]) -> String {
+    private func parenthesize(name: String, exprs: [Expr]) throws -> String {
         var toReturn = "(\(name)"
         for expr in exprs {
-            toReturn += " \(expr.accept(self))"
+            toReturn += " \(try expr.accept(self))"
         }
         toReturn += ")"
 
@@ -41,7 +43,7 @@ class AstPrinter: Visitor {
                                             right: Literal(value: 123)),
                                 op: Token(type: .star, lexeme: "*", literal: nil, line: 1),
                                 right: Grouping(expression: Literal(value: 45.67)))
-        print(AstPrinter().printExpr(expr: expression))
+        print(try! AstPrinter().printExpr(expr: expression))
         
     }
 }
