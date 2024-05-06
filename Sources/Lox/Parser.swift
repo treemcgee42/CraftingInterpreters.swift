@@ -39,14 +39,82 @@ class Parser {
     }
 
     private func statement() throws -> Stmt {
+        if match([.for_]) {
+            return try forStatement()
+        }
+        if match([.if_]) {
+            return try ifStatement()
+        }
         if match([.print]) {
             return try printStatement()
+        }
+        if match([.while_]) {
+            return try whileStatement()
         }
         if match([.leftBrace]) {
             return BlockStmt(statements: try block())
         }
 
         return try expressionStatement()
+    }
+
+    private func forStatement() throws -> Stmt {
+        _ = try consume(type: .leftParen, msg: "Expect '(' after 'for'.")
+
+        var initializer: Stmt?
+        if match([.semicolon]) {
+            initializer = nil
+        } else if match([.var_]) {
+            initializer = try varDeclaration()
+        } else {
+            initializer = try expressionStatement()
+        }
+
+        var condition: Expr? = nil
+        if !check(.semicolon) {
+            condition = try expression()
+        }
+        _ = try consume(type: .semicolon, msg: "Expect ';' after loop condition.")
+
+        var increment: Expr? = nil
+        if !check(.rightParen) {
+            increment = try expression()
+        }
+        _ = try consume(type: .rightParen, msg: "Expect ')' after for clauses.")
+
+        var body = try statement()
+
+        // --- desugar
+        
+        if let increment = increment {
+            body = BlockStmt(statements: [body, ExpressionStmt(expression: increment)])
+        }
+        
+        if condition == nil {
+            condition = LiteralExpr(value: true)
+        }
+        body = WhileStmt(condition: condition!, body: body)
+        
+        if let initializer = initializer {
+            body = BlockStmt(statements: [initializer, body])
+        }
+
+        return body
+    }
+
+    private func ifStatement() throws -> Stmt {
+        _ = try consume(type: .leftParen, msg: "Expect '(' after 'if'.")
+        let condition = try expression()
+        _ = try consume(type: .rightParen, msg: "Expect ')' after if condition.")
+
+        let thenBranch = try statement()
+        var elseBranch: Stmt? = nil
+        if match([.else_]) {
+            elseBranch = try statement()
+        }
+
+        return IfStmt(condition: condition, thenBranch: thenBranch,
+                      elseBranch: elseBranch)
     }
 
     private func printStatement() throws -> Stmt {
@@ -67,6 +135,15 @@ class Parser {
         return VarStmt(name: name, initializer: initializer)
     }
 
+    private func whileStatement() throws -> Stmt {
+        _ = try consume(type: .leftParen, msg: "Expect '(' after 'while'.")
+        let condition = try expression()
+        _ = try consume(type: .rightParen, msg: "Expect ')' after condition.")
+        let body = try statement()
+
+        return WhileStmt(condition: condition, body: body)
+    }
+
     private func expressionStatement() throws -> Stmt {
         let expr = try expression()
         _ = try consume(type: .semicolon, msg: "Expect ';' after expression.")
@@ -85,7 +162,7 @@ class Parser {
     }
 
     private func assignment() throws -> Expr {
-        let expr = try equality()
+        let expr = try or()
 
         if match([.equal]) {
             let equals = previous()
@@ -97,6 +174,30 @@ class Parser {
             }
 
             _ = error(token: equals, msg: "Invalid assignment target")
+        }
+
+        return expr
+    }
+
+    private func or() throws -> Expr {
+        var expr = try and()
+
+        while match([.or_]) {
+            let op = previous()
+            let right = try and()
+            expr = LogicalExpr(left: expr, op: op, right: right)
+        }
+
+        return expr
+    }
+
+    private func and() throws -> Expr {
+        var expr = try equality()
+
+        while match([.and_]) {
+            let op = previous()
+            let right = try equality()
+            expr = LogicalExpr(left: expr, op: op, right: right)
         }
 
         return expr

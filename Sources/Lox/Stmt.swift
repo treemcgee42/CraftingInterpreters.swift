@@ -10,6 +10,8 @@ protocol StmtVisitor {
 
 	func visitBlockStmt(_ Stmt: BlockStmt) throws -> StmtR
 	func visitVarStmt(_ Stmt: VarStmt) throws -> StmtR
+	func visitWhileStmt(_ Stmt: WhileStmt) throws -> StmtR
+	func visitIfStmt(_ Stmt: IfStmt) throws -> StmtR
 	func visitExpressionStmt(_ Stmt: ExpressionStmt) throws -> StmtR
 	func visitPrintStmt(_ Stmt: PrintStmt) throws -> StmtR
 }
@@ -28,6 +30,25 @@ struct VarStmt: Stmt {
 
 	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
 		return try visitor.visitVarStmt(self)
+	}
+}
+
+struct WhileStmt: Stmt {
+	var condition: Expr
+	var body: Stmt
+
+	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
+		return try visitor.visitWhileStmt(self)
+	}
+}
+
+struct IfStmt: Stmt {
+	var condition: Expr
+	var thenBranch: Stmt
+	var elseBranch: Stmt?
+
+	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
+		return try visitor.visitIfStmt(self)
 	}
 }
 

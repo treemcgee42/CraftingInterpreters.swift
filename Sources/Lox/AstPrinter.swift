@@ -45,6 +45,10 @@ class AstPrinter: ExprVisitor {
         return try parenthesize(name: "assign \(expr.name.lexeme)", exprs: [expr.value])
     }
 
+    func visitLogicalExpr(_ expr: LogicalExpr) throws -> String {
+        return try parenthesize(name: "\(expr.op.lexeme)", exprs: [expr.left, expr.right])
+    }
+
     static func main() {
         let expression = BinaryExpr(left: UnaryExpr(op: Token(type: .minus, lexeme: "-", literal: nil,
                                                       line: 1),

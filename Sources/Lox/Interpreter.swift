@@ -21,6 +21,22 @@ class Interpreter: ExprVisitor, StmtVisitor {
         return expr.value
     }
 
+    func visitLogicalExpr(_ expr: LogicalExpr) throws -> Optional<Any> {
+        let left = try evaluate(expr.left)
+
+        if expr.op.type == .or_ {
+            if isTruthy(left) {
+                return left
+            }
+        } else {
+            if !isTruthy(left) {
+                return left
+            }
+        }
+
+        return try evaluate(expr.right)
+    }
+
     func visitUnaryExpr(_ expr: UnaryExpr) throws -> Optional<Any> {
         let right = try evaluate(expr.right)
 
@@ -191,6 +207,15 @@ class Interpreter: ExprVisitor, StmtVisitor {
         return nil
     }
 
+    func visitIfStmt(_ stmt: IfStmt) throws -> ()? {
+        if isTruthy(try evaluate(stmt.condition)) {
+            try execute(stmt: stmt.thenBranch)
+        } else if stmt.elseBranch != nil {
+            try execute(stmt: stmt.elseBranch)
+        }
+        return nil
+    }
+
     func visitPrintStmt(_ stmt: PrintStmt) throws -> ()? {
         let value = try evaluate(stmt.expression)
         print(stringify(value))
@@ -204,6 +229,13 @@ class Interpreter: ExprVisitor, StmtVisitor {
         }
 
         environment.define(name: String(stmt.name.lexeme), value: value)
+        return nil
+    }
+
+    func visitWhileStmt(_ stmt: WhileStmt) throws -> ()? {
+        while isTruthy(try evaluate(stmt.condition)) {
+            try execute(stmt: stmt.body)
+        }
         return nil
     }
 
