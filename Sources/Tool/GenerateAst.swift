@@ -17,6 +17,8 @@ class GenerateAst {
           baseName: "Expr",
           types: ["Assign": [("name", "Token"), ("value", "Expr")],
                   "Binary": [("left", "Expr"), ("op", "Token"), ("right", "Expr")],
+                  "Call": [("callee", "Expr"), ("paren", "Token"),
+                           ("arguments", "[Expr]")],
                   "Grouping": [("expression", "Expr")],
                   "Literal": [("value", "Optional<Any>")],
                   "Logical": [("left", "Expr"), ("op", "Token"), ("right", "Expr")],
@@ -28,9 +30,12 @@ class GenerateAst {
           baseName: "Stmt",
           types: ["Block": [("statements", "[Stmt?]")],
                   "Expression": [("expression", "Expr")],
+                  "Function": [("name", "Token"), ("params", "[Token]"),
+                               ("body", "[Stmt?]")],
                   "If": [("condition", "Expr"), ("thenBranch", "Stmt"),
                          ("elseBranch", "Stmt?")],
                   "Print": [("expression", "Expr")],
+                  "Return": [("keyword", "Token"), ("value", "Expr?")],
                   "Var": [("name", "Token"), ("initializer", "Expr?")],
                   "While": [("condition", "Expr"), ("body", "Stmt")]])
     }

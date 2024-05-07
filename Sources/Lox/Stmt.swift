@@ -8,19 +8,22 @@ protocol Stmt {
 protocol StmtVisitor {
 	associatedtype StmtR
 
-	func visitBlockStmt(_ Stmt: BlockStmt) throws -> StmtR
-	func visitVarStmt(_ Stmt: VarStmt) throws -> StmtR
 	func visitWhileStmt(_ Stmt: WhileStmt) throws -> StmtR
-	func visitIfStmt(_ Stmt: IfStmt) throws -> StmtR
+	func visitVarStmt(_ Stmt: VarStmt) throws -> StmtR
 	func visitExpressionStmt(_ Stmt: ExpressionStmt) throws -> StmtR
+	func visitFunctionStmt(_ Stmt: FunctionStmt) throws -> StmtR
+	func visitReturnStmt(_ Stmt: ReturnStmt) throws -> StmtR
 	func visitPrintStmt(_ Stmt: PrintStmt) throws -> StmtR
+	func visitIfStmt(_ Stmt: IfStmt) throws -> StmtR
+	func visitBlockStmt(_ Stmt: BlockStmt) throws -> StmtR
 }
 
-struct BlockStmt: Stmt {
-	var statements: [Stmt?]
+struct WhileStmt: Stmt {
+	var condition: Expr
+	var body: Stmt
 
 	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
-		return try visitor.visitBlockStmt(self)
+		return try visitor.visitWhileStmt(self)
 	}
 }
 
@@ -33,12 +36,38 @@ struct VarStmt: Stmt {
 	}
 }
 
-struct WhileStmt: Stmt {
-	var condition: Expr
-	var body: Stmt
+struct ExpressionStmt: Stmt {
+	var expression: Expr
 
 	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
-		return try visitor.visitWhileStmt(self)
+		return try visitor.visitExpressionStmt(self)
+	}
+}
+
+struct FunctionStmt: Stmt {
+	var name: Token
+	var params: [Token]
+	var body: [Stmt?]
+
+	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
+		return try visitor.visitFunctionStmt(self)
+	}
+}
+
+struct ReturnStmt: Stmt {
+	var keyword: Token
+	var value: Expr?
+
+	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
+		return try visitor.visitReturnStmt(self)
+	}
+}
+
+struct PrintStmt: Stmt {
+	var expression: Expr
+
+	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
+		return try visitor.visitPrintStmt(self)
 	}
 }
 
@@ -52,19 +81,11 @@ struct IfStmt: Stmt {
 	}
 }
 
-struct ExpressionStmt: Stmt {
-	var expression: Expr
+struct BlockStmt: Stmt {
+	var statements: [Stmt?]
 
 	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
-		return try visitor.visitExpressionStmt(self)
-	}
-}
-
-struct PrintStmt: Stmt {
-	var expression: Expr
-
-	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
-		return try visitor.visitPrintStmt(self)
+		return try visitor.visitBlockStmt(self)
 	}
 }
 

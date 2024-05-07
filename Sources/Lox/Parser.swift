@@ -28,6 +28,9 @@ class Parser {
 
     private func declaration() throws -> Stmt? {
         do {
+            if match([.fun]) {
+                return try function(kind: "function")
+            }
             if match([.var_]) {
                 return try varDeclaration()
             }
@@ -47,6 +50,9 @@ class Parser {
         }
         if match([.print]) {
             return try printStatement()
+        }
+        if match([.return_]) {
+            return try returnStatement()
         }
         if match([.while_]) {
             return try whileStatement()
@@ -123,6 +129,17 @@ class Parser {
         return PrintStmt(expression: value)
     }
 
+    private func returnStatement() throws -> Stmt {
+        let keyword = previous()
+        var value: Expr? = nil
+        if !check(.semicolon) {
+            value = try expression()
+        }
+
+        _ = try consume(type: .semicolon, msg: "Expect ';' after return value.")
+        return ReturnStmt(keyword: keyword, value: value)
+    }
+
     private func varDeclaration() throws -> Stmt {
         let name = try consume(type: .identifier, msg: "Expect variable name.")
 
@@ -148,6 +165,35 @@ class Parser {
         let expr = try expression()
         _ = try consume(type: .semicolon, msg: "Expect ';' after expression.")
         return ExpressionStmt(expression: expr)
+    }
+
+    private func function(kind: String) throws -> FunctionStmt {
+        let name = try consume(type: .identifier,
+                               msg: "Expect \(kind) name.")
+        _ = try consume(type: .leftParen,
+                        msg: "Expect '(' after \(kind) name.")
+        var parameters: [Token] = []
+        if !check(.rightParen) {
+            while true {
+                if parameters.count >= 255 {
+                    _ = error(token: peek(),
+                              msg: "Can't have more than 255 parameters.")
+                }
+                parameters.append(try consume(type: .identifier,
+                                              msg: "Expect parameter name."))
+
+                if !match([.comma]) {
+                    break
+                }
+            }
+        }
+
+        _ = try consume(type: .rightParen, msg: "Expect ')' after parameters.")
+
+        _ = try consume(type: .leftBrace, msg: "Expect '{' before \(kind) body.")
+        let body = try block()
+
+        return FunctionStmt(name: name, params: parameters, body: body)
     }
 
     private func block() throws -> [Stmt?] {
@@ -258,7 +304,42 @@ class Parser {
             return UnaryExpr(op: op, right: right)
         }
 
-        return try primary()
+        return try call()
+    }
+
+    private func finishCall(callee: Expr) throws -> Expr {
+        var arguments: [Expr] = []
+        if !check(.rightParen) {
+            while true {
+                if arguments.count >= 255 {
+                    _ = error(token: peek(),
+                              msg: "Can't have more than 255 arguments.")
+                }
+                arguments.append(try expression())
+                if !match([.comma]) {
+                    break;
+                }
+            }
+        }
+
+        let paren = try consume(type: .rightParen,
+                                msg: "Expect ')' after aguments.")
+
+        return CallExpr(callee: callee, paren: paren, arguments: arguments)
+    }
+
+    private func call() throws -> Expr {
+        var expr = try primary()
+
+        while true {
+            if match([.leftParen]) {
+                expr = try finishCall(callee: expr)
+            } else {
+                break;
+            }
+        }
+
+        return expr
     }
 
     private func primary() throws -> Expr {

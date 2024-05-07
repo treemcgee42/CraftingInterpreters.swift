@@ -3,7 +3,15 @@ class Interpreter: ExprVisitor, StmtVisitor {
     typealias ExprR = Optional<Any>
     typealias StmtR = ()?
 
-    private var environment = Environment()
+    var globals: Environment
+    private var environment: Environment
+
+    init() {
+        globals = Environment()
+        environment = globals
+
+        globals.define(name: "clock", value: ClockNativeFunction())
+    }
     
     func interpret(statements: [Stmt?]) {
         do {
@@ -183,11 +191,29 @@ class Interpreter: ExprVisitor, StmtVisitor {
             if (left is Double) && (right is Double) {
                 return (left as! Double) + (right as! Double)
             }
-            if (left is String) && (right is String) {
-                return (left as! String) + (right as! String)
+            if (left is Substring || left is String)
+                 && (right is Substring || right is String) {
+                var l: String
+                if left is Substring {
+                    l = String(left as! Substring)
+                } else {
+                    l = left as! String
+                }
+                var r: String
+                if right is Substring {
+                    r = String(right as! Substring)
+                } else {
+                    r = right as! String
+                }
+                return l + r
             }
+            let l = String(describing: left)
+            let r = String(describing: right)
             throw RuntimeError(token: expr.op,
-                               msg: "Operands must be two numbers or two strings")
+                               msg: """
+                                 Operands to '+' must be two numbers or two strings.
+                                 Got (\(l), \(r)).
+                                 """)
         case .slash:
             try checkNumberOperands(op: expr.op, left: left, right: right)
             return (left as! Double) / (right as! Double)
@@ -202,8 +228,38 @@ class Interpreter: ExprVisitor, StmtVisitor {
         return nil;
     }
 
+    func visitCallExpr(_ expr: CallExpr) throws -> Optional<Any> {
+        let callee = try evaluate(expr.callee)
+
+        var arguments: [Optional<Any>] = []
+        for argument in expr.arguments {
+            arguments.append(try evaluate(argument))
+        }
+
+        if !(callee is LoxCallable) {
+            throw RuntimeError(token: expr.paren,
+                               msg: "Can only call functions and classes.")
+        }
+        let function = callee as! LoxCallable
+
+        if arguments.count != function.arity() {
+            throw RuntimeError(token: expr.paren,
+                               msg: """
+                                 Expected \(function.arity()) arguments
+                                 but got \(arguments.count).
+                                 """)
+        }
+        return try function.call(interpreter: self, arguments: arguments)
+    }
+
     func visitExpressionStmt(_ stmt: ExpressionStmt) throws -> ()? {
         _ = try evaluate(stmt.expression);
+        return nil
+    }
+
+    func visitFunctionStmt(_ stmt: FunctionStmt) throws -> ()? {
+        let function = LoxFunction(declaration: stmt, closure: self.environment)
+        environment.define(name: String(stmt.name.lexeme), value: function)
         return nil
     }
 
@@ -220,6 +276,15 @@ class Interpreter: ExprVisitor, StmtVisitor {
         let value = try evaluate(stmt.expression)
         print(stringify(value))
         return nil
+    }
+
+    func visitReturnStmt(_ stmt: ReturnStmt) throws -> ()? {
+        var value: Optional<Any> = nil
+        if let stmtValue = stmt.value {
+            value = try evaluate(stmtValue)
+        }
+
+        throw Return(value: value)
     }
 
     func visitVarStmt(_ stmt: VarStmt) throws -> ()? {
