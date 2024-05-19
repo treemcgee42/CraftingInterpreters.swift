@@ -1,10 +1,13 @@
 
+import Foundation
+
 class Interpreter: ExprVisitor, StmtVisitor {
     typealias ExprR = Optional<Any>
     typealias StmtR = ()?
 
     var globals: Environment
     private var environment: Environment
+    private var locals: [UUID:Int] = [:]
 
     init() {
         globals = Environment()
@@ -62,7 +65,16 @@ class Interpreter: ExprVisitor, StmtVisitor {
     }
 
     func visitVariableExpr(_ expr: VariableExpr) throws -> Optional<Any> {
-        return try environment.get(name: expr.name)
+        return try lookUpVariable(name: expr.name, expr: expr)
+    }
+
+    func lookUpVariable(name: Token, expr: any Expr) throws -> Optional<Any> {
+        if let distance = locals[expr.id] {
+            return try environment.getAt(distance: distance,
+                                         name: String(name.lexeme))
+        } else {
+            return try globals.get(name: name)
+        }
     }
 
     private func checkNumberOperand(op: Token, operand: Optional<Any>) throws {
@@ -143,6 +155,10 @@ class Interpreter: ExprVisitor, StmtVisitor {
         if let nonnil_stmt = stmt {
             _ = try nonnil_stmt.accept(self)
         }
+    }
+
+    func resolve(expr: Expr, depth: Int) {
+        locals[expr.id] = depth
     }
 
     func executeBlock(statements: [Stmt?], environment: Environment) throws {
@@ -306,7 +322,14 @@ class Interpreter: ExprVisitor, StmtVisitor {
 
     func visitAssignExpr(_ expr: AssignExpr) throws -> Optional<Any> {
         let value = try evaluate(expr.value)
-        try environment.assign(name: expr.name, value: value)
+
+        if let distance = locals[expr.id] {
+            try environment.assignAt(distance: distance, name: expr.name,
+                                     value: value)
+        } else {
+            try globals.assign(name: expr.name, value: value)
+        }
+        
         return value
     }
 }

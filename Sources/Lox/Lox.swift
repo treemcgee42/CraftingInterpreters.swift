@@ -63,6 +63,13 @@ struct Lox {
             return
         }
 
+        let resolver = Resolver(interpreter: interpreter)
+        resolver.resolve(stmts: statements)
+
+        if hadError {
+            return
+        }
+
         // print(try! AstPrinter().printExpr(expr: expression!))
         interpreter.interpret(statements: statements)
     }

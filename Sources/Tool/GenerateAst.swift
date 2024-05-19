@@ -49,7 +49,10 @@ class GenerateAst {
           // \(baseName).swift
           // This is a generated file.
 
+          import Foundation
+          
           protocol \(baseName) {
+              var id: UUID { get }
               func accept<V: \(baseName)Visitor>(_ visitor: V) throws -> V.\(baseName)R
           }
           
@@ -84,6 +87,8 @@ class GenerateAst {
         for (fieldName, fieldType) in fieldList {
             content += "\n\tvar \(fieldName): \(fieldType)"
         }
+
+        content += "\n\n\tvar id: UUID = UUID()"
 
         // Visitor pattern.
         content += "\n"
