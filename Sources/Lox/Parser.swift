@@ -46,6 +46,14 @@ class Parser {
 
     private func classDeclaration() throws -> Stmt {
         let name = try consume(type: .identifier, msg: "Expect class name.");
+
+        var superclass: VariableExpr? = nil
+        if match([.less]) {
+            _ = try consume(type: .identifier,
+                            msg: "Expect superclass name.")
+            superclass = VariableExpr(name: previous())
+        }
+        
         _ = try consume(type: .leftBrace, msg: "Expect '{' before class body.")
 
         var methods: [FunctionStmt] = []
@@ -54,7 +62,8 @@ class Parser {
         }
 
         _ = try consume(type: .rightBrace, msg: "Expect '}' after class body.")
-        return ClassStmt(name: name, methods: methods)
+        return ClassStmt(name: name, superclass: superclass,
+                         methods: methods)
     }
 
     private func statement() throws -> Stmt {
@@ -379,6 +388,14 @@ class Parser {
 
         if match([.number, .string]) {
             return LiteralExpr(value: previous().literal)
+        }
+
+        if match([.super_]) {
+            let keyword = previous()
+            _ = try consume(type: .dot, msg: "Expect '.' after 'super'.")
+            let method = try consume(type: .identifier,
+                                     msg: "Expect superclass method name.")
+            return SuperExpr(keyword: keyword, method: method)
         }
 
         if match([.this]) {

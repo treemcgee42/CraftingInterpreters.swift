@@ -9,6 +9,7 @@ private enum FunctionType {
 private enum ClassType {
     case none_
     case class_
+    case subclass
 }
 
 class Resolver: ExprVisitor, StmtVisitor {
@@ -44,6 +45,22 @@ class Resolver: ExprVisitor, StmtVisitor {
         declare(name: stmt.name)
         define(name: stmt.name)
 
+        if stmt.superclass != nil &&
+             stmt.name.lexeme == stmt.superclass!.name.lexeme {
+            Lox.error(token: stmt.superclass!.name,
+                      msg: "A class can't inherit from itself.")
+        }
+        
+        if let superclass = stmt.superclass {
+            self.currentClass = .subclass
+            resolve(expr: superclass)
+        }
+
+        if stmt.superclass != nil {
+            beginScope()
+            scopes[scopes.count-1]["super"] = true
+        }
+        
         beginScope()
         scopes[scopes.count-1]["this"] = true
 
@@ -56,6 +73,10 @@ class Resolver: ExprVisitor, StmtVisitor {
         }
 
         endScope()
+
+        if stmt.superclass != nil {
+            endScope()
+        }
 
         self.currentClass = enclosingClass
         return nil
@@ -163,6 +184,19 @@ class Resolver: ExprVisitor, StmtVisitor {
     func visitSetExpr(_ expr: SetExpr) -> ()? {
         resolve(expr: expr.value)
         resolve(expr: expr.object)
+        return nil
+    }
+
+    func visitSuperExpr(_ expr: SuperExpr) -> ()? {
+        if self.currentClass == .none_ {
+            Lox.error(token: expr.keyword,
+                      msg: "Can't user 'super' outside of a class.")
+        } else if currentClass != .subclass {
+            Lox.error(token: expr.keyword,
+                      msg: "Can't user 'super' in a class with no superclass.")
+        }
+        
+        resolveLocal(expr: expr, name: expr.keyword)
         return nil
     }
 

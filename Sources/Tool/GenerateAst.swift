@@ -24,6 +24,7 @@ class GenerateAst {
                   "Literal": [("value", "Optional<Any>")],
                   "Logical": [("left", "Expr"), ("op", "Token"), ("right", "Expr")],
                   "Set": [("object", "Expr"), ("name", "Token"), ("value", "Expr")],
+                  "Super": [("keyword", "Token"), ("method", "Token")],
                   "This": [("keyword", "Token")],
                   "Unary": [("op", "Token"), ("right", "Expr")],
                   "Variable": [("name", "Token")]])
@@ -32,7 +33,8 @@ class GenerateAst {
           outputDir: outputDir,
           baseName: "Stmt",
           types: ["Block": [("statements", "[Stmt?]")],
-                  "Class": [("name", "Token"), ("methods", "[FunctionStmt]")],
+                  "Class": [("name", "Token"), ("superclass", "VariableExpr?"),
+                            ("methods", "[FunctionStmt]")],
                   "Expression": [("expression", "Expr")],
                   "Function": [("name", "Token"), ("params", "[Token]"),
                                ("body", "[Stmt?]")],

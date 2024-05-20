@@ -1,16 +1,23 @@
 
 class LoxClass: CustomStringConvertible, LoxCallable {
     var name: String
+    var superclass: LoxClass?
     var methods: [String:LoxFunction]
 
-    init(name: String, methods: [String:LoxFunction]) {
+    init(name: String, superclass: LoxClass?,
+         methods: [String:LoxFunction]) {
         self.name = name
+        self.superclass = superclass
         self.methods = methods
     }
 
     func findMethod(name: String) -> LoxFunction? {
         if let method = methods[name] {
             return method
+        }
+
+        if let superclass = self.superclass {
+            return superclass.findMethod(name: name)
         }
         
         return nil

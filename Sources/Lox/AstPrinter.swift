@@ -65,6 +65,10 @@ class AstPrinter: ExprVisitor {
         return "this"
     }
 
+    func visitSuperExpr(_ expr: SuperExpr) throws -> String {
+        return "unimplemented for SuperExpr"
+    }
+
     static func main() {
         let expression = BinaryExpr(left: UnaryExpr(op: Token(type: .minus, lexeme: "-", literal: nil,
                                                       line: 1),

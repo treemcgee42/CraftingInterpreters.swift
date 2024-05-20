@@ -11,15 +11,25 @@ protocol Stmt {
 protocol StmtVisitor {
 	associatedtype StmtR
 
+	func visitPrintStmt(_ Stmt: PrintStmt) throws -> StmtR
 	func visitExpressionStmt(_ Stmt: ExpressionStmt) throws -> StmtR
 	func visitFunctionStmt(_ Stmt: FunctionStmt) throws -> StmtR
-	func visitPrintStmt(_ Stmt: PrintStmt) throws -> StmtR
-	func visitVarStmt(_ Stmt: VarStmt) throws -> StmtR
-	func visitBlockStmt(_ Stmt: BlockStmt) throws -> StmtR
-	func visitClassStmt(_ Stmt: ClassStmt) throws -> StmtR
 	func visitIfStmt(_ Stmt: IfStmt) throws -> StmtR
 	func visitWhileStmt(_ Stmt: WhileStmt) throws -> StmtR
 	func visitReturnStmt(_ Stmt: ReturnStmt) throws -> StmtR
+	func visitVarStmt(_ Stmt: VarStmt) throws -> StmtR
+	func visitBlockStmt(_ Stmt: BlockStmt) throws -> StmtR
+	func visitClassStmt(_ Stmt: ClassStmt) throws -> StmtR
+}
+
+struct PrintStmt: Stmt {
+	var expression: Expr
+
+	var id: UUID = UUID()
+
+	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
+		return try visitor.visitPrintStmt(self)
+	}
 }
 
 struct ExpressionStmt: Stmt {
@@ -41,48 +51,6 @@ struct FunctionStmt: Stmt {
 
 	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
 		return try visitor.visitFunctionStmt(self)
-	}
-}
-
-struct PrintStmt: Stmt {
-	var expression: Expr
-
-	var id: UUID = UUID()
-
-	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
-		return try visitor.visitPrintStmt(self)
-	}
-}
-
-struct VarStmt: Stmt {
-	var name: Token
-	var initializer: Expr?
-
-	var id: UUID = UUID()
-
-	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
-		return try visitor.visitVarStmt(self)
-	}
-}
-
-struct BlockStmt: Stmt {
-	var statements: [Stmt?]
-
-	var id: UUID = UUID()
-
-	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
-		return try visitor.visitBlockStmt(self)
-	}
-}
-
-struct ClassStmt: Stmt {
-	var name: Token
-	var methods: [FunctionStmt]
-
-	var id: UUID = UUID()
-
-	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
-		return try visitor.visitClassStmt(self)
 	}
 }
 
@@ -117,6 +85,39 @@ struct ReturnStmt: Stmt {
 
 	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
 		return try visitor.visitReturnStmt(self)
+	}
+}
+
+struct VarStmt: Stmt {
+	var name: Token
+	var initializer: Expr?
+
+	var id: UUID = UUID()
+
+	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
+		return try visitor.visitVarStmt(self)
+	}
+}
+
+struct BlockStmt: Stmt {
+	var statements: [Stmt?]
+
+	var id: UUID = UUID()
+
+	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
+		return try visitor.visitBlockStmt(self)
+	}
+}
+
+struct ClassStmt: Stmt {
+	var name: Token
+	var superclass: VariableExpr?
+	var methods: [FunctionStmt]
+
+	var id: UUID = UUID()
+
+	func accept<V: StmtVisitor>(_ visitor: V) throws -> V.StmtR {
+		return try visitor.visitClassStmt(self)
 	}
 }
 

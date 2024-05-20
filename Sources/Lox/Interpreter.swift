@@ -61,6 +61,25 @@ class Interpreter: ExprVisitor, StmtVisitor {
         return value
     }
 
+    func visitSuperExpr(_ expr: SuperExpr) throws -> Optional<Any> {
+        let distance = locals[expr.id]!
+        let superclass = try environment.getAt(
+          distance: distance,
+          name: "super") as! LoxClass
+
+        let object = try environment.getAt(
+          distance: distance-1,
+          name: "this") as! LoxInstance
+
+        guard let method = superclass.findMethod(
+                name: String(expr.method.lexeme)) else {
+            throw RuntimeError(
+              token: expr.method,
+              msg: "Undefined property '\(expr.method.lexeme)'.")
+        }
+        return method.bind(instance: object)
+    }
+
     func visitThisExpr(_ expr: ThisExpr) throws -> Optional<Any> {
         return try lookUpVariable(name: expr.keyword, expr: expr)
     }
@@ -197,7 +216,21 @@ class Interpreter: ExprVisitor, StmtVisitor {
     }
 
     func visitClassStmt(_ stmt: ClassStmt) throws -> ()? {
+        var superclass: Optional<Any> = nil
+        if stmt.superclass != nil {
+            superclass = try evaluate(stmt.superclass!)
+            if !(superclass is LoxClass) {
+                throw RuntimeError(token: stmt.superclass!.name,
+                                   msg: "Superclass must be a class.")
+            }
+        }
+
         environment.define(name: String(stmt.name.lexeme), value: nil)
+
+        if stmt.superclass != nil {
+            environment = Environment(enclosing: environment)
+            environment.define(name: "super", value: superclass)
+        }
 
         var methods: [String:LoxFunction] = [:]
         for method in stmt.methods {
@@ -208,7 +241,14 @@ class Interpreter: ExprVisitor, StmtVisitor {
             methods[String(method.name.lexeme)] = function
         }
         
-        let klass = LoxClass(name: String(stmt.name.lexeme), methods: methods)
+        let klass = LoxClass(name: String(stmt.name.lexeme),
+                             superclass: superclass as! LoxClass?,
+                             methods: methods)
+
+        if superclass != nil {
+            environment = environment.enclosing!
+        }
+        
         try environment.assign(name: stmt.name, value: klass)
         return nil
     }
