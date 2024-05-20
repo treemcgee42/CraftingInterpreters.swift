@@ -19,9 +19,12 @@ class GenerateAst {
                   "Binary": [("left", "Expr"), ("op", "Token"), ("right", "Expr")],
                   "Call": [("callee", "Expr"), ("paren", "Token"),
                            ("arguments", "[Expr]")],
+                  "Get": [("object", "Expr"), ("name", "Token")],
                   "Grouping": [("expression", "Expr")],
                   "Literal": [("value", "Optional<Any>")],
                   "Logical": [("left", "Expr"), ("op", "Token"), ("right", "Expr")],
+                  "Set": [("object", "Expr"), ("name", "Token"), ("value", "Expr")],
+                  "This": [("keyword", "Token")],
                   "Unary": [("op", "Token"), ("right", "Expr")],
                   "Variable": [("name", "Token")]])
 
@@ -29,6 +32,7 @@ class GenerateAst {
           outputDir: outputDir,
           baseName: "Stmt",
           types: ["Block": [("statements", "[Stmt?]")],
+                  "Class": [("name", "Token"), ("methods", "[FunctionStmt]")],
                   "Expression": [("expression", "Expr")],
                   "Function": [("name", "Token"), ("params", "[Token]"),
                                ("body", "[Stmt?]")],

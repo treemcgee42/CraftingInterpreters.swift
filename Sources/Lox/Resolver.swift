@@ -2,6 +2,13 @@
 private enum FunctionType {
     case none_
     case function
+    case initializer
+    case method
+}
+
+private enum ClassType {
+    case none_
+    case class_
 }
 
 class Resolver: ExprVisitor, StmtVisitor {
@@ -11,6 +18,7 @@ class Resolver: ExprVisitor, StmtVisitor {
     var interpreter: Interpreter
     var scopes: [[String:Bool]] = []
     private var currentFunction: FunctionType = .none_
+    private var currentClass: ClassType = .none_
 
     init(interpreter: Interpreter) {
         self.interpreter = interpreter
@@ -26,6 +34,30 @@ class Resolver: ExprVisitor, StmtVisitor {
         beginScope()
         resolve(stmts: stmt.statements)
         endScope()
+        return nil
+    }
+
+    func visitClassStmt(_ stmt: ClassStmt) -> ()? {
+        let enclosingClass = self.currentClass
+        self.currentClass = .class_
+        
+        declare(name: stmt.name)
+        define(name: stmt.name)
+
+        beginScope()
+        scopes[scopes.count-1]["this"] = true
+
+        for method in stmt.methods {
+            var declaration: FunctionType = .method
+            if (method.name.lexeme == "init") {
+                declaration = .initializer
+            }
+            resolveFunction(function: method, functionType: declaration)
+        }
+
+        endScope()
+
+        self.currentClass = enclosingClass
         return nil
     }
 
@@ -63,6 +95,11 @@ class Resolver: ExprVisitor, StmtVisitor {
         }
         
         if let value = stmt.value {
+            if currentFunction == .initializer {
+                Lox.error(token: stmt.keyword,
+                          msg: "Can't return a value from an initializer.")
+            }
+            
             resolve(expr: value)
         }
         return nil
@@ -103,6 +140,11 @@ class Resolver: ExprVisitor, StmtVisitor {
         return nil
     }
 
+    func visitGetExpr(_ expr: GetExpr) -> ()? {
+        resolve(expr: expr.object)
+        return nil
+    }
+
     func visitGroupingExpr(_ expr: GroupingExpr) -> ()? {
         resolve(expr: expr.expression)
         return nil
@@ -115,6 +157,23 @@ class Resolver: ExprVisitor, StmtVisitor {
     func visitLogicalExpr(_ expr: LogicalExpr) -> ()? {
         resolve(expr: expr.left)
         resolve(expr: expr.right)
+        return nil
+    }
+
+    func visitSetExpr(_ expr: SetExpr) -> ()? {
+        resolve(expr: expr.value)
+        resolve(expr: expr.object)
+        return nil
+    }
+
+    func visitThisExpr(_ expr: ThisExpr) -> ()? {
+        if self.currentClass == .none_ {
+            Lox.error(token: expr.keyword,
+                      msg: "Can't use 'this' outside of a class.")
+            return nil
+        }
+        
+        resolveLocal(expr: expr, name: expr.keyword)
         return nil
     }
 

@@ -48,6 +48,23 @@ class Interpreter: ExprVisitor, StmtVisitor {
         return try evaluate(expr.right)
     }
 
+    func visitSetExpr(_ expr: SetExpr) throws -> Optional<Any> {
+        let object = try evaluate(expr.object)
+
+        guard let instanceObject = object as? LoxInstance else {
+            throw RuntimeError(token: expr.name,
+                               msg: "Only instances have fields.")
+        }
+
+        let value = try evaluate(expr.value)
+        instanceObject.set(name: expr.name, value: value)
+        return value
+    }
+
+    func visitThisExpr(_ expr: ThisExpr) throws -> Optional<Any> {
+        return try lookUpVariable(name: expr.keyword, expr: expr)
+    }
+
     func visitUnaryExpr(_ expr: UnaryExpr) throws -> Optional<Any> {
         let right = try evaluate(expr.right)
 
@@ -179,6 +196,23 @@ class Interpreter: ExprVisitor, StmtVisitor {
         return nil
     }
 
+    func visitClassStmt(_ stmt: ClassStmt) throws -> ()? {
+        environment.define(name: String(stmt.name.lexeme), value: nil)
+
+        var methods: [String:LoxFunction] = [:]
+        for method in stmt.methods {
+            let function = LoxFunction(
+              declaration: method,
+              closure: environment,
+              isInitializer: method.name.lexeme == "init")
+            methods[String(method.name.lexeme)] = function
+        }
+        
+        let klass = LoxClass(name: String(stmt.name.lexeme), methods: methods)
+        try environment.assign(name: stmt.name, value: klass)
+        return nil
+    }
+
     func visitBinaryExpr(_ expr: BinaryExpr) throws -> Optional<Any> {
         let left = try evaluate(expr.left)
         let right = try evaluate(expr.right)
@@ -268,13 +302,25 @@ class Interpreter: ExprVisitor, StmtVisitor {
         return try function.call(interpreter: self, arguments: arguments)
     }
 
+    func visitGetExpr(_ expr: GetExpr) throws -> Optional<Any> {
+        let object = try evaluate(expr.object)
+        if object is LoxInstance {
+            return try (object as! LoxInstance).get(name: expr.name)
+        }
+
+        throw RuntimeError(token: expr.name,
+                           msg: "Only instances have properties.")
+    }
+
     func visitExpressionStmt(_ stmt: ExpressionStmt) throws -> ()? {
         _ = try evaluate(stmt.expression);
         return nil
     }
 
     func visitFunctionStmt(_ stmt: FunctionStmt) throws -> ()? {
-        let function = LoxFunction(declaration: stmt, closure: self.environment)
+        let function = LoxFunction(declaration: stmt,
+                                   closure: self.environment,
+                                   isInitializer: false)
         environment.define(name: String(stmt.name.lexeme), value: function)
         return nil
     }

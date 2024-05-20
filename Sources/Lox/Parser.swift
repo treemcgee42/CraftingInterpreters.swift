@@ -28,6 +28,9 @@ class Parser {
 
     private func declaration() throws -> Stmt? {
         do {
+            if match([.class_]) {
+                return try classDeclaration()
+            }
             if match([.fun]) {
                 return try function(kind: "function")
             }
@@ -39,6 +42,19 @@ class Parser {
             synchronize()
             return nil
         }
+    }
+
+    private func classDeclaration() throws -> Stmt {
+        let name = try consume(type: .identifier, msg: "Expect class name.");
+        _ = try consume(type: .leftBrace, msg: "Expect '{' before class body.")
+
+        var methods: [FunctionStmt] = []
+        while !check(.rightBrace) && !isAtEnd() {
+            methods.append(try function(kind: "method"))
+        }
+
+        _ = try consume(type: .rightBrace, msg: "Expect '}' after class body.")
+        return ClassStmt(name: name, methods: methods)
     }
 
     private func statement() throws -> Stmt {
@@ -217,6 +233,10 @@ class Parser {
             if expr is VariableExpr {
                 let name = (expr as! VariableExpr).name
                 return AssignExpr(name: name, value: value)
+            } else if expr is GetExpr {
+                let get = expr as! GetExpr
+                return SetExpr(object: get.object, name: get.name,
+                               value: value)
             }
 
             _ = error(token: equals, msg: "Invalid assignment target")
@@ -334,6 +354,10 @@ class Parser {
         while true {
             if match([.leftParen]) {
                 expr = try finishCall(callee: expr)
+            } else if match([.dot]) {
+                let name = try consume(type: .identifier,
+                                       msg: "Expect property name after '.'.")
+                expr = GetExpr(object: expr, name: name)
             } else {
                 break;
             }
@@ -355,6 +379,10 @@ class Parser {
 
         if match([.number, .string]) {
             return LiteralExpr(value: previous().literal)
+        }
+
+        if match([.this]) {
+            return ThisExpr(keyword: previous())
         }
 
         if match([.identifier]) {

@@ -53,6 +53,18 @@ class AstPrinter: ExprVisitor {
         return try parenthesize(name: "call", exprs: [expr.callee])
     }
 
+    func visitSetExpr(_ expr: SetExpr) throws -> String {
+        return "Set expr printing not implemented"
+    }
+
+    func visitGetExpr(_ expr: GetExpr) throws -> String {
+        return "Get expr printing not implemented"
+    }
+
+    func visitThisExpr(_ expr: ThisExpr) throws -> String {
+        return "this"
+    }
+
     static func main() {
         let expression = BinaryExpr(left: UnaryExpr(op: Token(type: .minus, lexeme: "-", literal: nil,
                                                       line: 1),
