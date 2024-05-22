@@ -17,9 +17,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Tell CMake to configure the executable
 add_executable(clox
   src/chunk.c
+  src/compiler.c
   src/debug.c
   src/main.c
   src/memory.c
+  src/scanner.c
   src/value.c
   src/vm.c)
 
